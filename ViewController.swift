@@ -8,17 +8,23 @@
 import AVFoundation
 import UIKit
 
-class ViewController: UIViewController {
+// Final обязательно!!!!
+final class ViewController: UIViewController {
     
     // capture session
-    var session: AVCaptureSession?
+    private var session: AVCaptureSession? // Should mark private
     // photo output
-    let output = AVCapturePhotoOutput()
+    private let output = AVCapturePhotoOutput()
     // video preview
-    let previewLayer = AVCaptureVideoPreviewLayer()
+    private let previewLayer = AVCaptureVideoPreviewLayer()
+    
+    private let photoSettings = AVCapturePhotoSettings()
+    
+    private let imageView = UIImageView()
+    
     // shutter button
     private let shutterButton: UIButton = {
-        let button = UIButton(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
+        let button = UIButton(frame: .init(x: 0, y: 0, width: 100, height: 100))
         button.layer.cornerRadius = 50
         button.layer.borderWidth = 10
         button.layer.borderColor = UIColor.white.cgColor
@@ -27,21 +33,31 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .black
-        view.layer.addSublayer(previewLayer)
-        view.addSubview(shutterButton)
-        //view.addSubview(RotateButton)
+       
+        setupView()
         checkCameraPermissions()
         
         shutterButton.addTarget(self, action: #selector(didTapTakePhoto), for: .touchUpInside)
     }
     
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        previewLayer.frame = view.bounds
+    private func setupView() {
+        view.backgroundColor = .black
         
-        shutterButton.center = CGPoint(x: view.frame.size.width / 2,
-                                       y: view.frame.size.height - 100)
+        view.layer.addSublayer(previewLayer)
+        view.addSubview(shutterButton)
+        view.addSubview(imageView)
+        
+        imageView.contentMode = .scaleAspectFill
+    }
+    
+    override func viewWillLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        previewLayer.frame = view.bounds
+        imageView.frame = view.bounds
+        
+        shutterButton.center = .init(x: view.frame.size.width / 2,
+                                     y: view.frame.size.height - shutterButton.frame.height)
     }
 
     private func checkCameraPermissions() {
@@ -86,31 +102,28 @@ class ViewController: UIViewController {
                 
                 session.startRunning()
                 self.session = session
-            }
-            catch {
+            } catch {
                 print(error)
             }
         }
     }
     
-    @objc private func didTapTakePhoto() {
-        output.capturePhoto(with: AVCapturePhotoSettings(),
+    @objc
+    private func didTapTakePhoto() {
+        output.capturePhoto(with: photoSettings,
                             delegate: self)
     }
 }
 
 extension ViewController: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+    func photoOutput(_ output: AVCapturePhotoOutput, 
+                     didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
         guard let data = photo.fileDataRepresentation() else {
             return
         }
-        let image = UIImage(data: data)
         
-        session?.stopRunning()
-        
-        let imageView = UIImageView(image: image)
-        imageView.contentMode = .scaleAspectFill
-        imageView.frame = view.bounds
-        view.addSubview(imageView)
+        imageView.image = UIImage(data: data)
+        session?.stopRunning()       
     }
 }
